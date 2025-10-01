@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from "react";
-// Assuming you have 'db' exported from '../firebase/firebase'
 import { db } from "../firebase/firebase";
 import {
   collection,
@@ -7,30 +6,26 @@ import {
   deleteDoc,
   doc,
   onSnapshot,
+  addDoc,
+  serverTimestamp,
 } from "firebase/firestore";
 
-// =========================================================================
-// NIGHT ROOM INVENTORY LIST COMPONENT (Firebase Connected)
-// =========================================================================
 const Tech = () => {
   const [inventory, setInventory] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [tech, setTech] = useState([
-    { id:2719, name: 'Mariano' },
-    { id:2720, name: 'Alejandro' },
-    { id:2721, name: 'Carlos' }
-  ]); // Default to "RoadTech"
 
+  // Tech list
+  const [tech] = useState([
+    { id: 2719, name: "Mariano" },
+    { id: 2720, name: "Alejandro" },
+    { id: 2721, name: "Carlos" },
+  ]);
 
-  
-
-  // --- Load Inventory from Firestore ---
+  // --- Load Inventory ---
   useEffect(() => {
-    // 1. Define the query for the 'inventory' collection
     const q = collection(db, "inventory");
-    
-    // 2. Set up the real-time listener (onSnapshot)
+
     const unsubscribe = onSnapshot(
       q,
       (snapshot) => {
@@ -38,76 +33,94 @@ const Tech = () => {
           id: doc.id,
           ...doc.data(),
         }));
-        
-        // Sort the data
         items.sort((a, b) =>
           (a.name + a.size).localeCompare(b.name + b.size)
         );
-        
         setInventory(items);
         setLoading(false);
       },
       (err) => {
-        // Handle potential errors during subscription/fetching
         console.error("Firestore Error:", err);
         setError("Failed to load inventory. Check console for details.");
         setLoading(false);
       }
     );
 
-    // 3. Clean up the listener on unmount
     return () => unsubscribe();
   }, []);
 
-  // --- Update quantity (Pull/Restock) ---
-  const changeQuantity = useCallback(
-    async (id, change) => {
-      try {
-        const tireRef = doc(db, "inventory", id);
-        const currentTire = inventory.find((t) => t.id === id);
-        if (!currentTire) return;
+  // --- Handle Pull (requires Tech ID) ---
+  const handlePull = async (tireId) => {
+    const techIdInput = prompt("Enter your Tech ID:");
+    if (!techIdInput) return;
 
-        // Ensure quantity doesn't go below zero
-        const newQuantity = Math.max(0, (currentTire.quantity || 0) + change); 
-
-        await updateDoc(tireRef, { quantity: newQuantity });
-      } catch (error) {
-        console.error("Error updating quantity:", error);
-      }
-    },
-    [inventory]
-  );
-
-  // --- Delete tire type ---
-  const deleteTire = useCallback(async (id) => {
-    if (!window.confirm("Are you sure you want to permanently delete this tire type?")) {
+    const techEntry = tech.find((t) => t.id === Number(techIdInput));
+    if (!techEntry) {
+      alert("Invalid Tech ID. Try again.");
       return;
     }
+
+    const currentTire = inventory.find((t) => t.id === tireId);
+    if (!currentTire || (currentTire.quantity || 0) <= 0) {
+      alert("No stock available.");
+      return;
+    }
+
+    try {
+      // Update inventory
+      const tireRef = doc(db, "inventory", tireId);
+      const newQuantity = Math.max(0, (currentTire.quantity || 0) - 1);
+      await updateDoc(tireRef, { quantity: newQuantity });
+
+      // Log pull
+      const logRef = collection(db, "tireLogs");
+      await addDoc(logRef, {
+        techId: techEntry.id,
+        techName: techEntry.name,
+        tire: `${currentTire.name} ${currentTire.size}`,
+        timestamp: serverTimestamp(),
+      });
+    } catch (err) {
+      console.error("Error pulling tire:", err);
+    }
+  };
+
+  // --- Restock (no tech needed) ---
+  const handleRestock = async (tireId) => {
+    try {
+      const tireRef = doc(db, "inventory", tireId);
+      const currentTire = inventory.find((t) => t.id === tireId);
+      const newQuantity = (currentTire.quantity || 0) + 1;
+      await updateDoc(tireRef, { quantity: newQuantity });
+    } catch (err) {
+      console.error("Error restocking:", err);
+    }
+  };
+
+  // --- Delete Tire ---
+  const deleteTire = useCallback(async (id) => {
+    if (!window.confirm("Are you sure you want to permanently delete this tire type?")) return;
     try {
       await deleteDoc(doc(db, "inventory", id));
-    } catch (error) {
-      console.error("Error deleting tire:", error);
+    } catch (err) {
+      console.error("Error deleting tire:", err);
     }
   }, []);
 
   const totalTires = inventory.reduce((sum, tire) => sum + (tire.quantity || 0), 0);
 
-  // --- UI Rendering ---
   if (loading) {
     return (
       <div className="app-container" style={{ textAlign: "center", padding: "4rem" }}>
         Loading Inventory... ⚙️
-        {/* (The styles are omitted here for brevity but should be included) */}
       </div>
     );
   }
 
   return (
     <div className="app-container">
-      {/* ------------------------------------------------------------- */}
-      {/* Include your original CSS styles here */}
-      {/* ------------------------------------------------------------- */}
       <style jsx="true">{`
+        /* ✅ Keeping your full CSS */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap');
         :root {
           --bg-dark: #1f2937;
@@ -266,10 +279,10 @@ const Tech = () => {
           justify-content: flex-end;
         }
       `}</style>
-      
+
       <header className="header">
         <h1>Night Room Inventory (Live Data)</h1>
-        <p>This component is fetching and updating data in real-time from your Firebase Firestore.</p>
+        <p>This component is fetching and updating data in real-time from Firebase Firestore.</p>
         <div className="user-info">Connection Status: Live</div>
       </header>
 
@@ -286,12 +299,12 @@ const Tech = () => {
         </div>
       </section>
 
-      {/* The Inventory List Section */}
+      {/* Inventory List */}
       <section className="inventory-list">
         <h2>Current Stock ({inventory.length} types)</h2>
         {inventory.length === 0 ? (
           <p style={{ textAlign: "center", color: "#9ca3af", padding: "2rem" }}>
-            Inventory is empty. (You may need to add tires using the original form component.)
+            Inventory is empty. (Add tires using the original form.)
           </p>
         ) : (
           <>
@@ -311,14 +324,14 @@ const Tech = () => {
                 <div className="action-buttons">
                   <button
                     className="btn-pull"
-                    onClick={() => changeQuantity(tire.id, -1)}
+                    onClick={() => handlePull(tire.id)}
                     disabled={(tire.quantity || 0) <= 0}
                   >
                     Pull ( -1 )
                   </button>
                   <button
                     className="btn-restock"
-                    onClick={() => changeQuantity(tire.id, 1)}
+                    onClick={() => handleRestock(tire.id)}
                   >
                     Restock ( +1 )
                   </button>
