@@ -1,0 +1,81 @@
+
+/* Container for alignment */
+.button-selector-container {
+  display: flex; /* Arrange buttons side-by-side */
+  justify-content: center; /* Center them horizontally */
+  align-items: center; /* Center them vertically */
+  gap: 40px; /* Space between the buttons */
+  height: 100vh; /* Full viewport height to center on screen */
+  background-color: #6e7b87; /* Light background for contrast */
+}
+
+/* Base style for both large buttons */
+.large-button {
+  /* Dimensions */
+  width: 300px;
+  height: 200px;
+  
+  /* Text Style */
+  font-size: 2.5em; /* Large text */
+  font-weight: 700;
+  color: white; 
+  text-transform: uppercase;
+  
+  /* Appearance */
+  border: none;
+  border-radius: 12px; /* Slightly rounded corners */
+  cursor: pointer;
+  
+  /* Box Shadow for "cool" 3D/elevation effect */
+  box-shadow: 0 10px 20px rgba(0, 0, 0, 0.19), 0 6px 6px rgba(0, 0, 0, 0.23);
+  
+  /* Transition for smooth hover effects */
+  transition: all 0.3s cubic-bezier(.25,.8,.25,1);
+}
+
+/* Roadtech Specific Styling (e.g., a strong blue/indigo) */
+.roadtech-button {
+  background-color: #4a55a2; 
+}
+
+/* Stocker Specific Styling (e.g., a vibrant green/teal) */
+.stocker-button {
+  background-color: #43aa8b;
+}
+
+/* Hover Effect: Lift the button and darken the color slightly */
+.large-button:hover {
+  box-shadow: 0 14px 28px rgba(0, 0, 0, 0.25), 0 10px 10px rgba(0, 0, 0, 0.22);
+  transform: translateY(-5px); /* Move button up slightly */
+}
+
+.roadtech-button:hover {
+  background-color: #3b458b; /* Darker blue on hover */
+}
+
+.stocker-button:hover {
+  background-color: #358b72; /* Darker green on hover */
+}
+
+/* Active/Click Effect: Press the button down */
+.large-button:active {
+  transform: translateY(0);
+  box-shadow: 0 5px 10px rgba(0, 0, 0, 0.19), 0 3px 3px rgba(0, 0, 0, 0.23);
+}
+
+/* Optional: Media query for smaller screens to stack buttons */
+@media (max-width: 768px) {
+  .button-selector-container {
+    flex-direction: column; /* Stack vertically */
+    gap: 20px;
+    padding: 20px;
+    height: auto; /* Remove full height on small screen */
+  }
+
+  .large-button {
+    width: 90%; /* Take up most of the screen width */
+    max-width: 400px;
+    height: 150px;
+    font-size: 2em;
+  }
+}
